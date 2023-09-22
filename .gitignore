@@ -103,7 +103,6 @@ data/external/.gitkeep
 # Data that I don't need to upload, large uncompressed files
 *.tsv
 *.h5ad
-*.ckpt
 remote/*
 */lightning_logs/*
 notebooks/poster*
