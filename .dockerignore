@@ -1,0 +1,7 @@
+#security
+.aws
+.env
+.DS_Store
+#big size
+**/.h5ad
+**/.ckpt

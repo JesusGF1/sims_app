@@ -31,6 +31,8 @@ RUN pip install matplotlib \
 
 RUN pip install git+https://github.com/braingeneers/sims
 
-RUN pip install streamlit
+#RUN pip install streamlit==1.27.0 #It does not work :(
+RUN pip install streamlit==1.12.0 
+RUN pip install altair==4.0 
 
 COPY . .

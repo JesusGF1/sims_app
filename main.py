@@ -41,4 +41,5 @@ st.write("""Visualize your data here:""")
 st.dataframe(testdata.obs)
 #sc.pl.umap(testdata, color=['cell_predictions'])
 
-# streamlit run main.py --server.maxUploadSize 1000
+#
+#streamlit run main.py --server.maxUploadSize 1000
