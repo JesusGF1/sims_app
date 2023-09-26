@@ -11,7 +11,7 @@ st.write("""Upload your data here:""")
 #else:
 #    st.write('Please upload the file which you want to predict')
 #st.write(testdata.obs)
-data_folder = "./dataset"
+data_folder = "../dataset"
 data_files = [f for f in os.listdir(data_folder) if f.endswith(".h5ad")]
 data_files = [os.path.join(data_folder, f) for f in data_files]
 selected_file = st.selectbox("Select the file you want to do label transfer on", data_files)
@@ -20,7 +20,7 @@ testdata = sc.read_h5ad(selected_file)
 
 st.write("""Select your model here:""")
 
-model_checkpoint_folder = "./checkpoint"
+model_checkpoint_folder = "../checkpoint"
 checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith(".ckpt")]
 checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
 selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files)
@@ -39,7 +39,8 @@ else:
 
 st.write("""Visualize your data here:""")
 st.dataframe(testdata.obs)
+#sc.tl.umap(testdata)
 #sc.pl.umap(testdata, color=['cell_predictions'])
 
 #
-#streamlit run app.py --server.maxUploadSize 1000
+#streamlit run streamlit_app.py --server.maxUploadSize 1000
