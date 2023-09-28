@@ -41,7 +41,7 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and "labe
     model_run = st.session_state['run']
     if uploaded_file is not None and selected_checkpoint is not None and class_label is not None and model_run is False:
         sims = SIMS(weights_path=selected_checkpoint, class_label=class_label)
-        cell_predictions = sims.predict(testdata)
+        cell_predictions = sims.predict(testdata,num_workers=0)
         st.session_state['run'] = True
         st.write("Predictions are done!")
         testdata.obs = testdata.obs.reset_index()
