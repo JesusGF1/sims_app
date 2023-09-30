@@ -27,7 +27,10 @@ if "testdata" in st.session_state:
     if 'label' not in st.session_state:
         st.session_state['label'] = class_label
 
-predict = st.button("Predict your cell types")
+
+if "testdata" in st.session_state and "checkpoint" in st.session_state and "label" in st.session_state: #Delete this if it does not work
+    predict = st.button("Predict your cell types")
+
 if "testdata" in st.session_state and "checkpoint" in st.session_state and "label" in st.session_state and predict:
     try:
         selected_checkpoint = st.session_state['checkpoint']
