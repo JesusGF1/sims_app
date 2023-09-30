@@ -16,7 +16,6 @@ if uploaded_file is not None:
             st.session_state['testdata'] = testdata
 
 if "testdata" in st.session_state:
-    st.write("""Select your model here:""")
     model_checkpoint_folder = "./checkpoint"
     checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith(".ckpt")]
     checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
