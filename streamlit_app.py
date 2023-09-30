@@ -51,6 +51,7 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and "labe
         testdata.obs['confidence_score'] = cell_predictions["first_prob"]
         print(testdata.obs)
         st.dataframe(testdata.obs)
+        st.download_button('Download predictions', testdata.obs, 'text/csv')
     else:
         st.write("Please select a model and upload your data first")
     
