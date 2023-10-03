@@ -1,2 +1,2 @@
 streamlit==1.24.1
-scsims==3.0.2
+scsims==3.0.4
