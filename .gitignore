@@ -112,7 +112,6 @@ credentials
 src/visualization/*.png
 wandbcreds
 wandb/*
-*.ckpt
 */wandb/*
 data/mouse/*
 src/data/converter_chunks/*
