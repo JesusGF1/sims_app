@@ -42,7 +42,7 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and predi
         st.session_state['run'] = False
     model_run = st.session_state['run']
     if uploaded_file is not None and selected_checkpoint is not None and model_run is False:#and class_label is not None
-        sims = SIMS(weights_path=selected_checkpoint)#, class_label=class_label)
+        sims = SIMS(weights_path=selected_checkpoint,map_location=torch.device('cpu'))#, class_label=class_label)
         cell_predictions = sims.predict(testdata,num_workers=0)
         st.session_state['run'] = True
         st.write("Predictions are done!")
