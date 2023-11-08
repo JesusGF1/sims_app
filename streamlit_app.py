@@ -66,7 +66,7 @@ if visualize and "testdata" in st.session_state:
         # normalize and log 
         sc.pp.normalize_total(testdata, target_sum=1e4)
         sc.pp.log1p(testdata)
-        
+
         sc.pp.highly_variable_genes(testdata, min_mean=0.0125, max_mean=3, min_disp=0.5)
         print("Highly variable genes: %d" % sum(testdata.var.highly_variable))
 
@@ -76,6 +76,8 @@ if visualize and "testdata" in st.session_state:
         # Perform scaling, PCA, and UMAP
         sc.pp.scale(testdata)
         sc.tl.pca(testdata, n_comps=50)
+
+        sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
         sc.tl.umap(testdata)
 
         # Visualize the UMAP plot
