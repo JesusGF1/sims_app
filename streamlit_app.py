@@ -22,18 +22,13 @@ if "testdata" in st.session_state:
     selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files)
     if 'checkpoint' not in st.session_state:
         st.session_state['checkpoint'] = selected_checkpoint
-    #class_label = st.text_input("Name of the Cell Type column", "CellType") #Class label in this case I think its CellType
-    #if 'label' not in st.session_state:
-    #    st.session_state['label'] = class_label
 
-
-if "testdata" in st.session_state and "checkpoint" in st.session_state:# and "label" in st.session_state: #Delete this if it does not work
+if "testdata" in st.session_state and "checkpoint" in st.session_state:
     predict = st.button("Predict your cell types")
 
-if "testdata" in st.session_state and "checkpoint" in st.session_state and predict: #and "label" in st.session_state
+if "testdata" in st.session_state and "checkpoint" in st.session_state and predict: 
     try:
         selected_checkpoint = st.session_state['checkpoint']
-        #class_label = st.session_state['label']
         testdata = st.session_state['testdata']
     except:
         st.write("Please select a model and upload your data first")
@@ -41,15 +36,14 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and predi
     if 'run' not in st.session_state:
         st.session_state['run'] = False
     model_run = st.session_state['run']
-    if uploaded_file is not None and selected_checkpoint is not None and model_run is False:#and class_label is not None
-        sims = SIMS(weights_path=selected_checkpoint,map_location=torch.device('cpu'))#, class_label=class_label)
-        cell_predictions = sims.predict(testdata,num_workers=0)
+    if uploaded_file is not None and selected_checkpoint is not None and model_run is False:
+        sims = SIMS(weights_path=selected_checkpoint,map_location=torch.device('cpu'))
+        cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
         st.session_state['run'] = True
         st.write("Predictions are done!")
         testdata.obs = testdata.obs.reset_index()
         testdata.obs['cell_predictions'] = cell_predictions["first_pred"]
         testdata.obs['confidence_score'] = cell_predictions["first_prob"]
-        print(testdata.obs)
         st.dataframe(testdata.obs)
         data_as_csv= testdata.obs.to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -58,17 +52,35 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and predi
             "scSimspredictions.csv",
             "text/csv",
         )
-        #st.download_button('Download predictions', testdata.obs, 'text/csv')
+
+visualize = st.button("Visualize Predictions")
+
+if visualize and "testdata" in st.session_state:
+    try:
+        testdata = st.session_state['testdata']
+    except:
+        st.write("Please generate predictions first.")
     else:
-        st.write("Please select a model and upload your data first")
-    
+        # Add the code to compute UMAP and visualize here
+        # Preprocess the data
+        # normalize and log 
+        sc.pp.normalize_total(testdata, target_sum=1e4)
+        sc.pp.log1p(testdata)
 
-#Casi que funciona, hay que tener cuidado de no repetir los botones ya que cada interaccion reinicia el script
+        sc.pp.highly_variable_genes(testdata, min_mean=0.0125, max_mean=3, min_disp=0.5)
+        print("Highly variable genes: %d" % sum(testdata.var.highly_variable))
 
-#st.write("""Visualize your data here:""")
-#st.dataframe(testdata.obs)
-#sc.tl.umap(testdata)
-#sc.pl.umap(testdata, color=['cell_predictions'])
+        # Subset for highly variable genes
+        testdata = testdata[:, testdata.var['highly_variable']]
 
-#
-#streamlit run streamlit_app.py --server.maxUploadSize 1000
+        # Perform scaling, PCA, and UMAP
+        sc.pp.scale(testdata)
+        sc.tl.pca(testdata, n_comps=50)
+
+        sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
+        sc.tl.umap(testdata)
+
+        # Visualize the UMAP plot
+        st.write("UMAP Visualization with Predictions")
+        fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
+        st.pyplot(fig)
