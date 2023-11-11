@@ -20,7 +20,7 @@ if "testdata" in st.session_state:
     model_checkpoint_folder = "./checkpoint"
     checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith(".ckpt")]
     checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
-    selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files, index=None)
+    selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files)
     st.write('You selected:', selected_checkpoint)
 
     if 'checkpoint' not in st.session_state:
