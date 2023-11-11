@@ -4,6 +4,7 @@ from scsims import SIMS
 import streamlit as st
 from tempfile import NamedTemporaryFile
 import os
+import time 
 
 st.write("Upload your h5ad")
 uploaded_file = st.file_uploader("File upload", type='h5ad')
@@ -20,6 +21,8 @@ if "testdata" in st.session_state:
     checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith(".ckpt")]
     checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
     selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files, index=None)
+    st.write('You selected:', selected_checkpoint)
+
     if 'checkpoint' not in st.session_state:
         st.session_state['checkpoint'] = selected_checkpoint
 
