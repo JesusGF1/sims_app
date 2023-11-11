@@ -23,8 +23,7 @@ if "testdata" in st.session_state:
     selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files)
     st.write('You selected:', selected_checkpoint)
 
-    if 'checkpoint' not in st.session_state:
-        st.session_state['checkpoint'] = selected_checkpoint
+    st.session_state['checkpoint'] = selected_checkpoint
 
 if "testdata" in st.session_state and "checkpoint" in st.session_state:
     predict = st.button("Predict your cell types")
@@ -40,6 +39,7 @@ if "testdata" in st.session_state and "checkpoint" in st.session_state and predi
         st.session_state['run'] = False
     model_run = st.session_state['run']
     if uploaded_file is not None and selected_checkpoint is not None and model_run is False:
+        print(f"Loading in {selected_checkpoint}")
         sims = SIMS(weights_path=selected_checkpoint,map_location=torch.device('cpu'))
         cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
         st.session_state['run'] = True
