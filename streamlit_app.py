@@ -23,7 +23,8 @@ if "testdata" in st.session_state:
     selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files, index=None)
 
     st.write("Selected Checkpoint: ", selected_checkpoint)
-    if 'checkpoint' not in st.session_state and selected_checkpoint:
+    model_selection = st.button("Confirm model selection")
+    if 'checkpoint' not in st.session_state and selected_checkpoint and model_selection:
         st.session_state['checkpoint'] = selected_checkpoint
 
 if "testdata" in st.session_state and "checkpoint" in st.session_state:
