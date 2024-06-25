@@ -5,6 +5,8 @@ import streamlit as st
 from tempfile import NamedTemporaryFile
 import os
 import pandas as pd 
+import json 
+import numpy as np
 
 st.write("Upload your h5ad")
 uploaded_file = st.file_uploader("File upload", type='h5ad')
@@ -119,3 +121,76 @@ if uploaded_file is not None:
             st.write("UMAP Visualization with Explainability Matrix")
             fig = sc.pl.umap(testdata, color=top10genes, palette='viridis', ncols=5, return_fig=True)
             st.pyplot(fig)
+        # Initialize session state variables
+        if "uploaded_json" not in st.session_state:
+            st.session_state.uploaded_json = None
+
+        if "gsea_json_data" not in st.session_state:
+            st.session_state.gsea_json_data = None
+
+        if "matching_genes" not in st.session_state:
+            st.session_state.matching_genes = None
+
+        if "button_sent" not in st.session_state:
+            st.session_state.button_sent = False
+
+        # Flag to track if a new file has been uploaded
+        new_file_uploaded = False
+
+        # GSEA Pathway Analysis button
+        gsea = st.button("GSEA Pathway Visualization")
+        if gsea or st.session_state.button_sent:
+            if not st.session_state.button_sent:
+                st.session_state.button_sent = True
+
+            # Check if a new file has been uploaded
+            uploaded_file = st.file_uploader("Upload GSEA JSON", type='json')
+            if uploaded_file is not None and uploaded_file != st.session_state.uploaded_json:
+                # Reset session state variables related to the uploaded file and analysis
+                st.session_state.uploaded_json = uploaded_file
+                st.session_state.gsea_json_data = json.load(uploaded_file)
+                st.session_state.matching_genes = None
+                new_file_uploaded = True
+
+            # Proceed with analysis if a new file is uploaded
+            if new_file_uploaded:
+                gene_symbols = []
+                for key, value in st.session_state.gsea_json_data.items():
+                    if 'geneSymbols' in value:
+                        gene_symbols.extend(value['geneSymbols'])
+                gsea_genes = set(gene_symbols)
+                
+                # get genes from testdata with nonzero expression
+                nonzero_mask = np.asarray(testdata.X.sum(axis=0)).flatten() > 0 
+                nonzero_genes = testdata.var.index[nonzero_mask]
+                testdata_genes = set(nonzero_genes)
+
+                # find the intersection of genes
+                matching_genes = gsea_genes.intersection(testdata_genes)
+                if len(matching_genes) == 0:
+                    st.write("No matching genes")
+                else:
+                    st.session_state.matching_genes = matching_genes
+                    st.write("Matching Genes:")
+                    st.write(matching_genes)
+                    
+                    # Display "Generating UMAP..." message
+                    with st.spinner("Generating UMAP..."):
+                        # Check if the UMAP is already calculated in the anndata object 
+                        if 'X_umap' not in testdata.obsm:
+                            sc.pp.normalize_total(testdata, target_sum=1e4)
+                            sc.pp.log1p(testdata)
+                            sc.pp.scale(testdata)
+                            sc.tl.pca(testdata, n_comps=50)
+                            sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
+                            sc.tl.umap(testdata)
+
+                    # Plot UMAP with matching genes if they exist
+                    if st.session_state.matching_genes:
+                        with st.expander("UMAP Visualization with Matching Genes"):
+                            fig_placeholder = st.empty()  # Placeholder for the UMAP figure
+                            fig = sc.pl.umap(testdata, color=list(st.session_state.matching_genes), palette='tab20', ncols=5, return_fig=True)
+                            fig_placeholder.pyplot(fig)
+                            
+                            # Set the expander state to open regardless of button state
+                            st.session_state.umap_expander_open = True
