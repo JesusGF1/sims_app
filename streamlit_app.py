@@ -28,22 +28,18 @@ if uploaded_file is not None:
         if 'checkpoint' not in st.session_state and selected_checkpoint:
             st.session_state['checkpoint'] = selected_checkpoint
 
+    ## Predict Cell Types
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
             predict = st.button("Predict Cell Types")
 
-        if "testdata" in st.session_state and "checkpoint" in st.session_state and predict: 
-            selected_checkpoint = st.session_state['checkpoint']
-            testdata = st.session_state['testdata']
-
-            if 'run' not in st.session_state:
-                st.session_state['run'] = False
-            model_run = st.session_state['run']
-
-            if uploaded_file is not None and selected_checkpoint is not None and not model_run:
-
-                print(f"Loading in: {selected_checkpoint}")
-                with st.spinner("Calculating predictions... Hang tight! This may take some time."):
-                    sims = SIMS(weights_path=selected_checkpoint,map_location=torch.device('cpu'))
+            # check if predict button is clicked and if model_run is False
+            if predict and not st.session_state.get('model_run', False):
+                selected_checkpoint = st.session_state['checkpoint']
+                testdata = st.session_state['testdata']
+                
+                st.write(f"Loading in: {selected_checkpoint}")
+                with st.spinner("Calculating predictions... Hang tight! This may take a few minutes."):
+                    sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu'))
 
                     st.session_state['model'] = sims
 
@@ -54,16 +50,24 @@ if uploaded_file is not None:
                     testdata.obs['cell_predictions'] = cell_predictions["first_pred"]
                     testdata.obs['confidence_score'] = cell_predictions["first_prob"]
                     st.dataframe(testdata.obs)
-                    data_as_csv= testdata.obs.to_csv(index=False).encode("utf-8")
+                    data_as_csv = testdata.obs.to_csv(index=False).encode("utf-8")
 
-            if model_run:
+                    st.session_state['model_run'] = True    # set model_run to True in session state
+                    st.session_state['data_as_csv'] = data_as_csv   # set data_as_csv in session state
+
+        if "model_run" in st.session_state and st.session_state['model_run']:
+            data_as_csv = st.session_state.get('data_as_csv')
+
+            if data_as_csv is not None:
                 st.download_button(
                     "Download predictions as CSV", 
                     data_as_csv, 
                     "scSimspredictions.csv",
                     "text/csv",
                 )
-
+                st.session_state['model_run'] = False   # reset model_run to False
+                
+    ## Visualize Predictions
         visualize = None
         if "testdata" in st.session_state and "checkpoint" in st.session_state and "run" in st.session_state and st.session_state["run"]:
             visualize = st.button("Visualize Predictions")
@@ -84,19 +88,19 @@ if uploaded_file is not None:
                 sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
                 sc.tl.umap(testdata)
 
-            # Visualize the UMAP plot
             st.write("UMAP Visualization with Predictions")
             fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
             st.pyplot(fig)
-
+            
+    ## Explainability Matrix
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
             explain = st.button("Generate Explainability Matrix")
 
         if "testdata" in st.session_state and "checkpoint" in st.session_state and explain:
             selected_checkpoint = st.session_state['checkpoint']
-            
+    
             st.write(f"Loading in: {selected_checkpoint}")
-            with st.spinner("Generating matrix... Hang tight! This may take some time."):
+            with st.spinner("Generating matrix... Hang tight! This may take several minutes."):
                 sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu')) if 'model' not in st.session_state else st.session_state['model']
                 explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
                 explain = pd.DataFrame(explain, columns=sims.model.genes)
@@ -114,7 +118,7 @@ if uploaded_file is not None:
                     sc.pp.normalize_total(testdata, target_sum=1e4)
                     sc.pp.log1p(testdata)
 
-                    # Perform scaling, PCA, and UMAP
+                    # perform scaling, PCA, and UMAP
                     sc.pp.scale(testdata)
                     sc.tl.pca(testdata, n_comps=50)
 
@@ -126,6 +130,7 @@ if uploaded_file is not None:
             fig = sc.pl.umap(testdata, color=top10genes, palette='viridis', ncols=5, return_fig=True)
             st.pyplot(fig)
 
+    ## GSEA Pathway Analysis
         if "uploaded_json" not in st.session_state:
             st.session_state.uploaded_json = None
 
@@ -138,8 +143,7 @@ if uploaded_file is not None:
         if "button_sent" not in st.session_state:
             st.session_state.button_sent = False
 
-        # Flag to track if a new file has been uploaded
-        new_file_uploaded = False
+        new_file_uploaded = False   # flag to track if a new file has been uploaded
 
         # GSEA Pathway Analysis button
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
@@ -148,7 +152,6 @@ if uploaded_file is not None:
                 if not st.session_state.button_sent:
                     st.session_state.button_sent = True
 
-                # Check if a new file has been uploaded
                 uploaded_file = st.file_uploader("Upload GSEA JSON", type='json')
                 if uploaded_file is not None and uploaded_file != st.session_state.uploaded_json:
                     # Reset session state variables related to the uploaded file and analysis
@@ -157,7 +160,6 @@ if uploaded_file is not None:
                     st.session_state.matching_genes = None
                     new_file_uploaded = True
 
-                # Proceed with analysis if a new file is uploaded
                 if new_file_uploaded:
                     gene_symbols = []
                     for key, value in st.session_state.gsea_json_data.items():
@@ -180,7 +182,7 @@ if uploaded_file is not None:
                         st.write(matching_genes)
                         
                         with st.spinner("Creating UMAP..."):
-                            # Check if the UMAP is already calculated in the anndata object 
+                            # check if the UMAP is already calculated in the anndata object 
                             if 'X_umap' not in testdata.obsm:
                                 sc.pp.normalize_total(testdata, target_sum=1e4)
                                 sc.pp.log1p(testdata)
@@ -189,12 +191,10 @@ if uploaded_file is not None:
                                 sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
                                 sc.tl.umap(testdata)
 
-                        # Plot UMAP with matching genes if they exist
+                        # plot UMAP with matching genes if they exist
                         if st.session_state.matching_genes:
                             with st.expander("UMAP Visualization with Matching Genes"):
                                 fig_placeholder = st.empty()  # Placeholder for the UMAP figure
                                 fig = sc.pl.umap(testdata, color=list(st.session_state.matching_genes), palette='tab20', ncols=5, return_fig=True)
                                 fig_placeholder.pyplot(fig)
                                 
-                                # Set the expander state to open regardless of button state
-                                st.session_state.umap_expander_open = True
