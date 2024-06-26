@@ -8,8 +8,8 @@ import pandas as pd
 import json 
 import numpy as np
 
-st.write("Upload your h5ad to get started")
-uploaded_file = st.file_uploader("File upload", type='h5ad')
+st.write("**Welcome to SIMS!**")
+uploaded_file = st.file_uploader("Upload your h5ad to get started", type='h5ad')
 if uploaded_file is not None:
     with NamedTemporaryFile(dir='.', suffix='.h5ad') as f:
         f.write(uploaded_file.getbuffer())
@@ -24,10 +24,10 @@ if uploaded_file is not None:
         checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
         selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files, index=None)
 
-        st.write("Selected Checkpoint: ", selected_checkpoint)
+        # st.write("Selected Checkpoint: ", selected_checkpoint)
         if 'checkpoint' not in st.session_state and selected_checkpoint:
             st.session_state['checkpoint'] = selected_checkpoint
-
+            
     ## Predict Cell Types
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
             predict = st.button("Predict Cell Types")
@@ -37,12 +37,13 @@ if uploaded_file is not None:
                 selected_checkpoint = st.session_state['checkpoint']
                 testdata = st.session_state['testdata']
                 
-                st.write(f"Loading in: {selected_checkpoint}")
+                loading_text = st.empty()
+                loading_text.text(f"Loading in: {selected_checkpoint}")
+                
                 with st.spinner("Calculating predictions... Hang tight! This may take a few minutes."):
                     sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu'))
-
+                    
                     st.session_state['model'] = sims
-
                     cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
                     st.session_state['run'] = True
                     st.write("Predictions are done!")
@@ -54,13 +55,16 @@ if uploaded_file is not None:
 
                     st.session_state['model_run'] = True    # set model_run to True in session state
                     st.session_state['data_as_csv'] = data_as_csv   # set data_as_csv in session state
+                    
+                    loading_text.empty()
+
 
         if "model_run" in st.session_state and st.session_state['model_run']:
             data_as_csv = st.session_state.get('data_as_csv')
 
             if data_as_csv is not None:
                 st.download_button(
-                    "Download predictions as CSV", 
+                    "Download Predictions as CSV", 
                     data_as_csv, 
                     "scSimspredictions.csv",
                     "text/csv",
@@ -99,7 +103,9 @@ if uploaded_file is not None:
         if "testdata" in st.session_state and "checkpoint" in st.session_state and explain:
             selected_checkpoint = st.session_state['checkpoint']
     
-            st.write(f"Loading in: {selected_checkpoint}")
+            loading_text = st.empty()
+            loading_text.text(f"Loading in: {selected_checkpoint}")
+            
             with st.spinner("Generating matrix... Hang tight! This may take several minutes."):
                 sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu')) if 'model' not in st.session_state else st.session_state['model']
                 explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
@@ -110,6 +116,8 @@ if uploaded_file is not None:
                 # get 10 genes with highest average gene expression
                 explain = explain.nlargest(10)
                 top10genes = explain.index.tolist()
+                
+                loading_text.empty()
 
             # generate the umap plots of the top 10 genes 
             # check if the umap is already calculated in the anndata object 
@@ -151,8 +159,8 @@ if uploaded_file is not None:
             if gsea or st.session_state.button_sent:
                 if not st.session_state.button_sent:
                     st.session_state.button_sent = True
-
-                uploaded_file = st.file_uploader("Upload GSEA JSON", type='json')
+    
+                uploaded_file = st.file_uploader("Upload a JSON dataset of gene pathways from [GSEA](https://www.gsea-msigdb.org/gsea/downloads.jsp) to compare with your genes and visualize with UMAP")
                 if uploaded_file is not None and uploaded_file != st.session_state.uploaded_json:
                     # Reset session state variables related to the uploaded file and analysis
                     st.session_state.uploaded_json = uploaded_file
