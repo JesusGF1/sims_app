@@ -17,15 +17,25 @@ if uploaded_file is not None:
         testdata = sc.read_h5ad(f.name)
         if 'testdata' not in st.session_state:
             st.session_state['testdata'] = testdata
-
+    
     if "testdata" in st.session_state:
         model_checkpoint_folder = "./checkpoint"
-        checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith(".ckpt")]
-        checkpoint_files = [os.path.join(model_checkpoint_folder, f) for f in checkpoint_files]
-        selected_checkpoint = st.selectbox("Select a Model Checkpoint", checkpoint_files, index=None)
-
-        # st.write("Selected Checkpoint: ", selected_checkpoint)
-        if 'checkpoint' not in st.session_state and selected_checkpoint:
+        checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith((".ckpt", ".pt"))]
+        display_names = sorted([os.path.splitext(f)[0] for f in checkpoint_files])
+        display_selected_checkpoint = st.selectbox("Select a Model Checkpoint", display_names, index=None)
+        
+        if display_selected_checkpoint:
+            if display_selected_checkpoint + ".pt" in checkpoint_files:
+                selected_checkpoint = os.path.join(model_checkpoint_folder, display_selected_checkpoint + ".pt")
+            elif display_selected_checkpoint + ".ckpt" in checkpoint_files:
+                selected_checkpoint = os.path.join(model_checkpoint_folder, display_selected_checkpoint + ".ckpt")
+            else:
+                selected_checkpoint = None  
+        else:
+            selected_checkpoint = None  
+        
+        # if 'checkpoint' not in st.session_state and selected_checkpoint: (switched to below so user can change choice)
+        if selected_checkpoint:
             st.session_state['checkpoint'] = selected_checkpoint
             
     ## Predict Cell Types
@@ -40,7 +50,7 @@ if uploaded_file is not None:
                 loading_text = st.empty()
                 loading_text.text(f"Loading in: {selected_checkpoint}")
                 
-                with st.spinner("Calculating predictions... Hang tight! This may take a few minutes."):
+                with st.spinner("Calculating predictions... Hang tight! Processing time varies based on file size."):
                     sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu'))
                     
                     st.session_state['model'] = sims
@@ -69,7 +79,8 @@ if uploaded_file is not None:
                     "scSimspredictions.csv",
                     "text/csv",
                 )
-                st.session_state['model_run'] = False   # reset model_run to False
+                st.session_state['model_run'] = False   # reset model_run to false so prediction process can 
+                                                        # be triggered again after it has been completed
                 
     ## Visualize Predictions
         visualize = None
@@ -106,7 +117,7 @@ if uploaded_file is not None:
             loading_text = st.empty()
             loading_text.text(f"Loading in: {selected_checkpoint}")
             
-            with st.spinner("Generating matrix... Hang tight! This may take several minutes."):
+            with st.spinner("Generating matrix... Hang tight! Processing time varies based on file size."):
                 sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu')) if 'model' not in st.session_state else st.session_state['model']
                 explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
                 explain = pd.DataFrame(explain, columns=sims.model.genes)
@@ -121,7 +132,7 @@ if uploaded_file is not None:
 
             # generate the umap plots of the top 10 genes 
             # check if the umap is already calculated in the anndata object 
-            with st.spinner("Creating UMAP..."):
+            with st.spinner("Almost there! Creating UMAP..."):
                 if 'X_umap' not in testdata.obsm:
                     sc.pp.normalize_total(testdata, target_sum=1e4)
                     sc.pp.log1p(testdata)
