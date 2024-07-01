@@ -7,13 +7,12 @@ import os
 import pandas as pd 
 import json 
 import numpy as np
-
-st.write("**Welcome to SIMS!**")
+    
+st.write("**:blue[Welcome to SIMS!]**")
 uploaded_file = st.file_uploader("Upload your h5ad to get started", type='h5ad')
 if uploaded_file is not None:
     with NamedTemporaryFile(dir='.', suffix='.h5ad') as f:
         f.write(uploaded_file.getbuffer())
-        # st.write(f.name)
         testdata = sc.read_h5ad(f.name)
         if 'testdata' not in st.session_state:
             st.session_state['testdata'] = testdata
@@ -34,10 +33,9 @@ if uploaded_file is not None:
         else:
             selected_checkpoint = None  
         
-        # if 'checkpoint' not in st.session_state and selected_checkpoint: (switched to below so user can change choice)
         if selected_checkpoint:
             st.session_state['checkpoint'] = selected_checkpoint
-            
+        
     ## Predict Cell Types
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
             predict = st.button("Predict Cell Types")
@@ -57,9 +55,9 @@ if uploaded_file is not None:
                     cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
                     st.session_state['run'] = True
                     st.write("Predictions are done!")
-                    testdata.obs = testdata.obs.reset_index()
-                    testdata.obs['cell_predictions'] = cell_predictions["first_pred"]
-                    testdata.obs['confidence_score'] = cell_predictions["first_prob"]
+                    # testdata.obs = testdata.obs.reset_index()
+                    testdata.obs['cell_predictions'] = cell_predictions["first_pred"].values
+                    testdata.obs['confidence_score'] = cell_predictions["first_prob"].values
                     st.dataframe(testdata.obs)
                     data_as_csv = testdata.obs.to_csv(index=False).encode("utf-8")
 
@@ -67,7 +65,6 @@ if uploaded_file is not None:
                     st.session_state['data_as_csv'] = data_as_csv   # set data_as_csv in session state
                     
                     loading_text.empty()
-
 
         if "model_run" in st.session_state and st.session_state['model_run']:
             data_as_csv = st.session_state.get('data_as_csv')
@@ -89,23 +86,24 @@ if uploaded_file is not None:
 
         if "testdata" in st.session_state and "checkpoint" in st.session_state and visualize:
             testdata = st.session_state['testdata']
-            # Add the code to compute UMAP and visualize here
-            # Preprocess the data
-            # normalize and log 
-            with st.spinner("Creating UMAP..."):
-                sc.pp.normalize_total(testdata, target_sum=1e4)
-                sc.pp.log1p(testdata)
+            try:
+                with st.spinner("Creating UMAP..."):
+                    if 'X_umap' not in testdata.obsm:
+                        sc.pp.normalize_total(testdata, target_sum=1e4)
+                        sc.pp.log1p(testdata)
 
-                # Perform scaling, PCA, and UMAP
-                sc.pp.scale(testdata)
-                sc.tl.pca(testdata, n_comps=50)
+                        sc.pp.scale(testdata)
+                        sc.tl.pca(testdata, n_comps=50)
 
-                sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                sc.tl.umap(testdata)
+                        sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
+                        sc.tl.umap(testdata)
 
-            st.write("UMAP Visualization with Predictions")
-            fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
-            st.pyplot(fig)
+                st.write("UMAP Visualization with Predictions")
+                fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
+                st.pyplot(fig)
+                
+            except Exception as e:
+                st.error(f"An error occurred while creating the UMAP. Try reloading the page and/or selecting a different model checkpoint. {e}")
             
     ## Explainability Matrix
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
