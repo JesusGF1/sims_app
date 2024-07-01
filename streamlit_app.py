@@ -86,25 +86,22 @@ if uploaded_file is not None:
 
         if "testdata" in st.session_state and "checkpoint" in st.session_state and visualize:
             testdata = st.session_state['testdata']
-            try:
-                with st.spinner("Creating UMAP..."):
-                    if 'X_umap' not in testdata.obsm:
-                        sc.pp.normalize_total(testdata, target_sum=1e4)
-                        sc.pp.log1p(testdata)
-
-                        sc.pp.scale(testdata)
-                        sc.tl.pca(testdata, n_comps=50)
-
-                        sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                        sc.tl.umap(testdata)
-
-                st.write("UMAP Visualization with Predictions")
-                fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
-                st.pyplot(fig)
-                
-            except Exception as e:
-                st.error(f"An error occurred while creating the UMAP. Try reloading the page and/or selecting a different model checkpoint. {e}")
             
+            with st.spinner("Creating UMAP..."):
+                if 'X_umap' not in testdata.obsm:
+                    sc.pp.normalize_total(testdata, target_sum=1e4)
+                    sc.pp.log1p(testdata)
+
+                    sc.pp.scale(testdata)
+                    sc.tl.pca(testdata, n_comps=50)
+
+                    sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
+                    sc.tl.umap(testdata)
+
+            st.write("UMAP Visualization with Predictions")
+            fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
+            st.pyplot(fig)
+             
     ## Explainability Matrix
         if "testdata" in st.session_state and "checkpoint" in st.session_state:
             explain = st.button("Generate Explainability Matrix")
