@@ -108,10 +108,10 @@ if uploaded_file is not None:
 
         if "testdata" in st.session_state and "checkpoint" in st.session_state and explain:
             selected_checkpoint = st.session_state['checkpoint']
-    
+
             loading_text = st.empty()
             loading_text.text(f"Loading in: {selected_checkpoint}")
-            
+
             with st.spinner("Generating matrix... Hang tight! Processing time varies based on file size."):
                 sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu')) if 'model' not in st.session_state else st.session_state['model']
                 explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
@@ -122,27 +122,51 @@ if uploaded_file is not None:
                 # get 10 genes with highest average gene expression
                 explain = explain.nlargest(10)
                 top10genes = explain.index.tolist()
-                
+
                 loading_text.empty()
 
-            # generate the umap plots of the top 10 genes 
-            # check if the umap is already calculated in the anndata object 
-            with st.spinner("Almost there! Creating UMAP..."):
-                if 'X_umap' not in testdata.obsm:
-                    sc.pp.normalize_total(testdata, target_sum=1e4)
-                    sc.pp.log1p(testdata)
+            st.write("Top 10 genes selected for explainability matrix:", top10genes)
 
-                    # perform scaling, PCA, and UMAP
-                    sc.pp.scale(testdata)
-                    sc.tl.pca(testdata, n_comps=50)
+            # generate the UMAP plot with a try-except block to handle missing genes
+            try:
+                with st.spinner("Creating UMAP..."):
+                    if 'X_umap' not in testdata.obsm:
+                        sc.pp.normalize_total(testdata, target_sum=1e4)
+                        sc.pp.log1p(testdata)
 
-                    sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                    sc.tl.umap(testdata)
+                        # perform scaling, PCA, and UMAP
+                        sc.pp.scale(testdata)
+                        sc.tl.pca(testdata, n_comps=50)
 
-            # plot a grid of 10 umap plots with the color being the expression of the gene
-            st.write("UMAP Visualization with Explainability Matrix")
-            fig = sc.pl.umap(testdata, color=top10genes, palette='viridis', ncols=5, return_fig=True)
-            st.pyplot(fig)
+                        sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
+                        sc.tl.umap(testdata)
+
+                st.write("UMAP Visualization with Explainability Matrix")
+                fig = sc.pl.umap(testdata, color=top10genes, palette='viridis', ncols=5, return_fig=True, use_raw=False)
+                st.pyplot(fig)
+                
+            except KeyError as e:
+                # extract all gene identifiers causing errors
+                missing_genes = []
+                genes_to_check = top10genes  
+
+                for gene in genes_to_check:
+                    if gene not in testdata.var_names:
+                        missing_genes.append(gene)
+                
+                if missing_genes:   # display the list of genes causing errors
+                    st.error(f"The following genes are missing in the dataset and will be excluded: {', '.join(missing_genes)}")
+                
+                # proceed with visualizing available genes if any
+                top10genes_filtered = [gene for gene in top10genes if gene in testdata.var_names]
+                if top10genes_filtered:
+                    with st.spinner("Creating UMAP with available genes..."):
+                        st.write("UMAP Visualization with Explainability Matrix (Filtered)")
+                        fig = sc.pl.umap(testdata, color=top10genes_filtered, palette='viridis', ncols=5, return_fig=True)
+                        st.pyplot(fig)
+                else:
+                    st.error("No valid genes found for visualization. Please check your datasets.")
+
 
     ## GSEA Pathway Analysis
         if "uploaded_json" not in st.session_state:
