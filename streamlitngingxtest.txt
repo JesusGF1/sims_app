@@ -1,0 +1,30 @@
+Streamlit config: (~/.streamlit/config.toml)
+
+[server]
+port=8502 # change port number. By default streamlit uses 8501 port
+headless=true # This will eliminate automatically open browser
+[browser] # This ip and port will show in command prompt
+serverAddress = "stackindex.tactii.com" # Put your Local IP or Domain Name
+serverPort = 8502
+Nginx setup: (/etc/nginx/sites-enabled/tactml)
+
+server {
+    listen 80;
+    server_name stackindex.tactii.com www.stackindex.tactii.com;
+    index index.php index.html index.htm;
+    location / {
+        proxy_pass http://0.0.0.0:8502/;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;
+    
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
