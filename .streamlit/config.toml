@@ -1,3 +1,9 @@
 [server]
 maxUploadSize = 5000
 enableXsrfProtection = false
+[theme]
+primaryColor="#4b85ff"
+backgroundColor="#FFFFFF"
+secondaryBackgroundColor="#F0F2F6"
+textColor="#31333F"
+font="sans serif"
