@@ -2,4 +2,3 @@
 maxUploadSize = 5000
 enableXsrfProtection = false
 
-maxMessageSize = 5000

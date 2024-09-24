@@ -7,6 +7,13 @@
 - **Gene Naming**: NCBI Symbol
 - **Reference Dataset**: [Velasco, S., Kedaigle, A.J., Simmons, S.K. et al, Nature 2019](https://www.nature.com/articles/s41586-019-1289-x)
 
+## MGE_cortex.ckpt
+- **Species**: Mouse, Rhesus macaque
+- **Tissue Type**: Brain, cortex, cerebrum, telencephalon, forebrain
+- **Cells in Reference**: 51,402
+- **Gene Naming**: NCBI Symbol
+- **Reference Dataset**: [Schmitz et al, Nature, 2022](https://www.nature.com/articles/s41586-022-04510-w)
+
 ## Velasco_organoids_11A_stressed_cells_removed.ckpt
 - **Species**: Human
 - **Tissue Type**: Organoids of the human cerebral cortex, specifically modeling the dorsal forebrain, with stressed cells removed
