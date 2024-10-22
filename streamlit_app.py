@@ -43,7 +43,7 @@ if uploaded_file is not None:
             selected_checkpoint = os.path.join(model_checkpoint_folder, checkpoint + ".ckpt")
         else:
             selected_checkpoint = None
-        st.session_state['checkpoint'] = selected_checkpoint
+        # st.session_state['checkpoint'] = selected_checkpoint
 
     # Action selection
     if st.session_state['checkpoint']:
@@ -51,7 +51,7 @@ if uploaded_file is not None:
         if action == "Predict Cell Types":
             if "testdata" in st.session_state:
                 if not st.session_state.get('model_run', False):
-                    selected_checkpoint = st.session_state['checkpoint']
+                    # selected_checkpoint = st.session_state['checkpoint']
                     testdata = st.session_state['testdata']
                     
                     loading_text = st.empty()
@@ -104,7 +104,7 @@ if uploaded_file is not None:
 
         elif action == "Generate Explainability Matrix":
             if "testdata" in st.session_state and st.session_state['checkpoint']:
-                selected_checkpoint = st.session_state['checkpoint']
+                # selected_checkpoint = st.session_state['checkpoint']
 
                 loading_text = st.empty()
                 loading_text.text(f"Loading in: {selected_checkpoint}")
