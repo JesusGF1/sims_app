@@ -22,12 +22,19 @@ if uploaded_file is not None:
     model_checkpoint_folder = "./checkpoint"
     checkpoint_files = [f for f in os.listdir(model_checkpoint_folder) if f.endswith((".ckpt", ".pt"))]
     display_names = sorted([os.path.splitext(f)[0] for f in checkpoint_files])
-
+    
     # Checkpoint selection
     if 'checkpoint' not in st.session_state:
         st.session_state['checkpoint'] = None
 
-    checkpoint = st.selectbox("Select a Model Checkpoint", ["Select a checkpoint"] + display_names, index=0 if st.session_state['checkpoint'] is None else display_names.index(os.path.splitext(os.path.basename(st.session_state['checkpoint']))[0]))
+    # Create a select box for model checkpoints
+    checkpoint = st.selectbox(
+        "Select a Model Checkpoint",
+        ["Select a checkpoint"] + display_names,
+        index=0 if st.session_state['checkpoint'] is None else display_names.index(
+            os.path.splitext(os.path.basename(st.session_state['checkpoint']))[0]
+        ) if os.path.basename(st.session_state['checkpoint']) in display_names else 0
+    )
 
     if checkpoint and st.session_state['checkpoint'] != checkpoint:
         if checkpoint + ".pt" in checkpoint_files:
@@ -41,9 +48,8 @@ if uploaded_file is not None:
     # Action selection
     if st.session_state['checkpoint']:
         action = st.selectbox("Choose an action", ["Select Action", "Predict Cell Types", "Generate Explainability Matrix", "Gene Pathway Visualization"])
-
         if action == "Predict Cell Types":
-            if "testdata" in st.session_state and st.session_state['checkpoint']:
+            if "testdata" in st.session_state:
                 if not st.session_state.get('model_run', False):
                     selected_checkpoint = st.session_state['checkpoint']
                     testdata = st.session_state['testdata']
