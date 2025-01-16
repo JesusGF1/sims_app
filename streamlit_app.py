@@ -257,3 +257,4 @@ if uploaded_file is not None:
                             fig_placeholder = st.empty()  # Placeholder for the UMAP figure
                             fig = sc.pl.umap(testdata, color=list(st.session_state.matching_genes), palette='tab20', ncols=5, return_fig=True)
                             fig_placeholder.pyplot(fig)
+                            
