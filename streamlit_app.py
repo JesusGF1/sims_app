@@ -163,6 +163,17 @@ if uploaded_file is not None:
             if "testdata" in st.session_state and st.session_state['checkpoint']:
                 selected_checkpoint = st.session_state['checkpoint']
 
+                st.warning(
+                    ":warning: **Heads up:** building the interpretability "
+                    "matrix needs a lot more memory than the predict step "
+                    "because pytorch_tabnet has to materialize a dense "
+                    "(post_embed_dim x input_dim) reducing matrix. For the "
+                    "shipped checkpoints (~34k input genes) this can push "
+                    "RAM use over the 1 GB limit on the Streamlit Community "
+                    "Cloud free tier and crash the worker. If it fails, "
+                    "try a smaller checkpoint or run the app locally."
+                )
+
                 loading_text = st.empty()
                 loading_text.text(f"Loading in: {selected_checkpoint}")
 
