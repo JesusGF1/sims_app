@@ -103,6 +103,8 @@ data/external/.gitkeep
 # Data that I don't need to upload, large uncompressed files
 *.tsv
 *.h5ad
+# ...except the small synthetic test fixture shipped with the app
+!test_data_small.h5ad
 remote/*
 */lightning_logs/*
 notebooks/poster*

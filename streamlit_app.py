@@ -4,9 +4,37 @@ from scsims import SIMS
 import streamlit as st
 from tempfile import NamedTemporaryFile
 import os
-import pandas as pd 
-import json 
+import pandas as pd
+import json
 import numpy as np
+
+
+def compute_umap(adata):
+    """Run normalize -> log1p -> scale -> PCA -> neighbors -> UMAP on `adata`,
+    in place, picking parameter values that are safe for the actual dataset
+    shape. Hardcoded n_comps=50 / n_pcs=30 / n_neighbors=20 used to crash on
+    any dataset with <=50 cells (e.g. the small test fixture)."""
+    if "X_umap" in adata.obsm:
+        return  # already computed
+
+    n_cells, n_genes = adata.shape
+    if n_cells < 4:
+        raise ValueError(
+            f"Need at least 4 cells to compute a UMAP, got {n_cells}."
+        )
+
+    # PCA n_components must be strictly less than min(n_samples, n_features).
+    n_comps = min(50, min(n_cells, n_genes) - 1)
+    n_pcs = min(30, n_comps)
+    n_neighbors = min(20, n_cells - 1)
+
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    sc.pp.scale(adata)
+    sc.tl.pca(adata, n_comps=n_comps)
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs)
+    sc.tl.umap(adata)
+
 
 st.subheader("**:red[Welcome to SIMS!]**")
 
@@ -85,18 +113,15 @@ if uploaded_file is not None:
                     if visualize:
                         testdata = st.session_state['testdata']
                         
-                        with st.spinner(":blue[Creating UMAP...]"):
-                            if 'X_umap' not in testdata.obsm:
-                                sc.pp.normalize_total(testdata, target_sum=1e4)
-                                sc.pp.log1p(testdata)
-                                sc.pp.scale(testdata)
-                                sc.tl.pca(testdata, n_comps=50)
-                                sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                                sc.tl.umap(testdata)
-
-                        st.write("UMAP Visualization with Predictions")
-                        fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
-                        st.pyplot(fig)
+                        try:
+                            with st.spinner(":blue[Creating UMAP...]"):
+                                compute_umap(testdata)
+                        except ValueError as e:
+                            st.error(f"Could not compute UMAP: {e}")
+                        else:
+                            st.write("UMAP Visualization with Predictions")
+                            fig = sc.pl.umap(testdata, color='cell_predictions', palette='tab20', return_fig=True)
+                            st.pyplot(fig)
                     
                     if st.session_state.get('data_as_csv'):
                         st.download_button(
@@ -132,21 +157,14 @@ if uploaded_file is not None:
                 # generate the UMAP plot with a try-except block to handle missing genes
                 try:
                     with st.spinner(":blue[Creating UMAP...]"):
-                        if 'X_umap' not in testdata.obsm:
-                            sc.pp.normalize_total(testdata, target_sum=1e4)
-                            sc.pp.log1p(testdata)
-
-                            # perform scaling, PCA, and UMAP
-                            sc.pp.scale(testdata)
-                            sc.tl.pca(testdata, n_comps=50)
-
-                            sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                            sc.tl.umap(testdata)
+                        compute_umap(testdata)
 
                     st.write("UMAP Visualization with Explainability Matrix")
                     fig = sc.pl.umap(testdata, color=top10genes, palette='viridis', ncols=5, return_fig=True, use_raw=False)
                     st.pyplot(fig)
-                    
+
+                except ValueError as e:
+                    st.error(f"Could not compute UMAP: {e}")
                 except KeyError as e:
                     # extract all gene identifiers causing errors
                     missing_genes = []
@@ -246,20 +264,16 @@ if uploaded_file is not None:
                     st.caption(":green[Genes found in dataset:]")
                     st.write(matching_genes)
                     
-                    with st.spinner(":blue[Creating UMAP visualization...]"):
-                        # Check if the UMAP is already calculated in the anndata object 
-                        if 'X_umap' not in testdata.obsm:
-                            sc.pp.normalize_total(testdata, target_sum=1e4)
-                            sc.pp.log1p(testdata)
-                            sc.pp.scale(testdata)
-                            sc.tl.pca(testdata, n_comps=50)
-                            sc.pp.neighbors(testdata, n_neighbors=20, n_pcs=30)
-                            sc.tl.umap(testdata)
-
-                    # Plot UMAP with matching genes if they exist
-                    if st.session_state.matching_genes:
-                        with st.expander("UMAP Visualization with Matching Genes"):
-                            fig_placeholder = st.empty()  # Placeholder for the UMAP figure
-                            fig = sc.pl.umap(testdata, color=list(st.session_state.matching_genes), palette='tab20', ncols=5, return_fig=True)
-                            fig_placeholder.pyplot(fig)
+                    try:
+                        with st.spinner(":blue[Creating UMAP visualization...]"):
+                            compute_umap(testdata)
+                    except ValueError as e:
+                        st.error(f"Could not compute UMAP: {e}")
+                    else:
+                        # Plot UMAP with matching genes if they exist
+                        if st.session_state.matching_genes:
+                            with st.expander("UMAP Visualization with Matching Genes"):
+                                fig_placeholder = st.empty()  # Placeholder for the UMAP figure
+                                fig = sc.pl.umap(testdata, color=list(st.session_state.matching_genes), palette='tab20', ncols=5, return_fig=True)
+                                fig_placeholder.pyplot(fig)
                             
