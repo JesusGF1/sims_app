@@ -81,31 +81,58 @@ if uploaded_file is not None:
                 if not st.session_state.get('model_run', False):
                     selected_checkpoint = st.session_state['checkpoint']
                     testdata = st.session_state['testdata']
-                    
+
                     loading_text = st.empty()
                     loading_text.text(f"Loading in: {selected_checkpoint}")
-                    
-                    with st.spinner(":blue[Calculating predictions... Hang tight! Processing time varies based on file size.]"):
-                        sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu'))
-                        
-                        st.session_state['model'] = sims
-                        cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
-                        st.session_state['run'] = True
-                        st.caption("Predictions are done!")
-                        # scsims.SIMS.predict() returns top-k predictions as
-                        # `pred_0..pred_{k-1}` and `prob_0..prob_{k-1}`. The
-                        # `first_pred`/`first_prob` aliases used here previously
-                        # were never produced by the library, so this line used
-                        # to KeyError on the first click of "Predict Cell Types".
-                        testdata.obs['cell_predictions'] = cell_predictions["pred_0"].values
-                        testdata.obs['confidence_score'] = cell_predictions["prob_0"].values
-                        st.dataframe(testdata.obs)
-                        data_as_csv = testdata.obs.to_csv(index=False).encode("utf-8")
 
-                        st.session_state['model_run'] = True
-                        st.session_state['data_as_csv'] = data_as_csv
-                        
+                    try:
+                        with st.spinner(":blue[Calculating predictions... Hang tight! Processing time varies based on file size.]"):
+                            # no_explain=True skips building the (post_embed_dim x
+                            # input_dim) reducing matrix that pytorch_tabnet
+                            # creates by default. For the shipped checkpoints
+                            # (input_dim ~= 34k) this saves ~1 GB of RAM at load
+                            # time, which is the difference between fitting in
+                            # the Streamlit Community Cloud free tier (1 GB) and
+                            # being SIGKILLed mid-load with no Python traceback.
+                            sims = SIMS(
+                                weights_path=selected_checkpoint,
+                                map_location=torch.device('cpu'),
+                                no_explain=True,
+                            )
+
+                            st.session_state['model'] = sims
+                            cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
+                            st.session_state['run'] = True
+                            st.caption("Predictions are done!")
+                            # scsims.SIMS.predict() returns top-k predictions as
+                            # `pred_0..pred_{k-1}` and `prob_0..prob_{k-1}`.
+                            testdata.obs['cell_predictions'] = cell_predictions["pred_0"].values
+                            testdata.obs['confidence_score'] = cell_predictions["prob_0"].values
+                            st.dataframe(testdata.obs)
+                            data_as_csv = testdata.obs.to_csv(index=False).encode("utf-8")
+
+                            st.session_state['model_run'] = True
+                            st.session_state['data_as_csv'] = data_as_csv
+
+                            loading_text.empty()
+                    except Exception as e:
+                        # Surface any failure (OOM kill from the OS won't reach
+                        # this handler, but every other failure mode will).
+                        # Without this, exceptions get swallowed by Streamlit's
+                        # script-runner and the user just sees "Oh no" with no
+                        # actionable details.
                         loading_text.empty()
+                        st.error(
+                            f"Prediction failed: **{type(e).__name__}**: {e}\n\n"
+                            "If you're on Streamlit Community Cloud's free tier, "
+                            "this is most likely an out-of-memory kill on a large "
+                            "checkpoint. The shipped MGE_cortex / Allen / Velasco "
+                            "checkpoints have ~34k input genes and need ~1.3-2.6 GB "
+                            "of RAM, which exceeds the 1 GB free tier limit. "
+                            "Try a smaller checkpoint (`human.pt`, `chimp.pt`, etc.) "
+                            "or run the app locally."
+                        )
+                        st.exception(e)
 
                 if "model_run" in st.session_state and st.session_state['model_run']:
                     # Show buttons for visualizing and downloading predictions
@@ -139,18 +166,41 @@ if uploaded_file is not None:
                 loading_text = st.empty()
                 loading_text.text(f"Loading in: {selected_checkpoint}")
 
-                with st.spinner(":blue[Generating matrix... Hang tight! Processing time varies based on file size.]"):
-                    sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu')) if 'model' not in st.session_state else st.session_state['model']
-                    explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
-                    explain = pd.DataFrame(explain, columns=sims.model.genes)
+                try:
+                    with st.spinner(":blue[Generating matrix... Hang tight! Processing time varies based on file size.]"):
+                        # Need a model with the explain reducing matrix built.
+                        # The cached `model` from the Predict path was loaded
+                        # with no_explain=True (memory optimization), so we
+                        # can't reuse it here -- have to reload.
+                        cached = st.session_state.get('model')
+                        if cached is not None and hasattr(cached.model, 'reducing_matrix'):
+                            sims = cached
+                        else:
+                            sims = SIMS(weights_path=selected_checkpoint, map_location=torch.device('cpu'))
+                            st.session_state['model'] = sims
 
-                    # get average gene expression in explainability matrix 
-                    explain = explain.mean(axis=0)
-                    # get 10 genes with highest average gene expression
-                    explain = explain.nlargest(10)
-                    top10genes = explain.index.tolist()
+                        explain = sims.explain(testdata, num_workers=0, batch_size=32)[0]
+                        explain = pd.DataFrame(explain, columns=sims.model.genes)
 
+                        # get average gene expression in explainability matrix
+                        explain = explain.mean(axis=0)
+                        # get 10 genes with highest average gene expression
+                        explain = explain.nlargest(10)
+                        top10genes = explain.index.tolist()
+
+                        loading_text.empty()
+                except Exception as e:
                     loading_text.empty()
+                    st.error(
+                        f"Explainability matrix failed: **{type(e).__name__}**: {e}\n\n"
+                        "The explainability path needs even more memory than the "
+                        "predict path because pytorch_tabnet builds a dense "
+                        "(post_embed_dim x input_dim) reducing matrix. On the "
+                        "Streamlit Community Cloud free tier (1 GB) the larger "
+                        "shipped checkpoints will OOM during this step."
+                    )
+                    st.exception(e)
+                    st.stop()
 
                 st.write("Top genes selected for explainability matrix:", top10genes)
 
