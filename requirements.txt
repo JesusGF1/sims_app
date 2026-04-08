@@ -1,2 +1,6 @@
-streamlit==1.28.1
-scsims==3.0.4
+# scsims v4 modernizes the dependency stack so the app works on the
+# Python 3.11/3.12/3.13 venvs that Streamlit Community Cloud now ships.
+# Install directly from the v4 branch until 4.0.0 is published to PyPI;
+# after that, swap this for: scsims>=4.0
+scsims @ git+https://github.com/braingeneers/SIMS.git@v4
+streamlit>=1.36
