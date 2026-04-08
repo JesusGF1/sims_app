@@ -4,3 +4,8 @@
 # after that, swap this for: scsims>=4.0
 scsims @ git+https://github.com/braingeneers/SIMS.git@v4
 streamlit>=1.36
+
+# streamlit_app.py imports scanpy directly for normalization + UMAP
+# plotting. scsims v4 dropped scanpy from its core deps (it's a
+# test-only extra over there), so the app has to declare it itself.
+scanpy>=1.10
