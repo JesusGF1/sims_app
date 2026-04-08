@@ -64,8 +64,13 @@ if uploaded_file is not None:
                         cell_predictions = sims.predict(testdata, num_workers=0, batch_size=32)
                         st.session_state['run'] = True
                         st.caption("Predictions are done!")
-                        testdata.obs['cell_predictions'] = cell_predictions["first_pred"].values
-                        testdata.obs['confidence_score'] = cell_predictions["first_prob"].values
+                        # scsims.SIMS.predict() returns top-k predictions as
+                        # `pred_0..pred_{k-1}` and `prob_0..prob_{k-1}`. The
+                        # `first_pred`/`first_prob` aliases used here previously
+                        # were never produced by the library, so this line used
+                        # to KeyError on the first click of "Predict Cell Types".
+                        testdata.obs['cell_predictions'] = cell_predictions["pred_0"].values
+                        testdata.obs['confidence_score'] = cell_predictions["prob_0"].values
                         st.dataframe(testdata.obs)
                         data_as_csv = testdata.obs.to_csv(index=False).encode("utf-8")
 
